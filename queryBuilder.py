@@ -21,7 +21,7 @@ class Query(object):
         self.variables = {'repo_owner': 'mantidproject', 'repo_name' : 'mantid'}
 
         # Threshold for pull requests to become stale (days)
-        self.staleThreshold = 7
+        self.staleThreshold = 8
         # Number of results to return per page
         self.page_size = 25
 
@@ -158,18 +158,18 @@ query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
         return (successful_commits, failed_commits)
 
 
-    # Checks for any reviews/assignees
-    def fetchReviews(self, PRlist):
+    # Selects which user to ask about the stale PR (build: SUCCESS)
+    def successMessage(self, PRlist):
         query = """
 query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
     repository(owner: $repo_owner, name: $repo_name){
         pullRequest(number: $pr_number){
             reviews(last: 1){
                 nodes{
+                    state
                     author{
                         login
                     }
-                    state
                 }
             }
             reviewRequests(last: 1){
@@ -179,16 +179,11 @@ query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
                     }
                 }
             }
-            assignees(last: 10){
-                nodes{
-                    login
-                }
-            }
-            mergeable
         }
     }
 }
 """
+        commentList = []
         # Loop through PRs which have built successfully
         for PR in PRlist:
             # Set pr_number variable
@@ -198,40 +193,45 @@ query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
 
             # Store data variables
             try:
-                review = data['data']['repository']['pullRequest']['reviews']\
-                            ['nodes'][0]
-                try:
-                    review_author = review['author']['login']
-                except TypeError:
-                    review_author = None
-                review_state = review['state']
-            except IndexError:
-                review_author = None
+                review_state = data['data']['repository']['pullRequest']\
+                                    ['reviews']['nodes'][0]['state']
+                review_author = data['data']['repository']['pullRequest']\
+                                    ['reviews']['nodes'][0]['author']['login']
+            except (TypeError, IndexError) as error:
                 review_state = None
 
             try:
-                request = data['data']['repository']['pullRequest']\
-                            ['reviewRequests']['nodes'][0]
-                try:
-                    reviewer = request['reviewer']['login']
-                except TypeError:
-                    reviewer = None
-            except IndexError:
+                reviewer = data['data']['repository']['pullRequest']\
+                                ['reviewRequests']['nodes'][0]['reviewer']['login']
+            except (TypeError, IndexError) as error:
                 reviewer = None
 
-            # Assignees
-            assignees = []
-            try:
-                for assignee in data['data']['repository']['pullRequest']\
-                                ['assignees']['nodes']:
-                    assignees.append(assignee['login'])
-            except TypeError:
-                assignees = None
 
-            mergeable = data['data']['repository']['pullRequest']['mergeable']
+            # Choose login to @___ comment
+            if review_state is None:
+                if reviewer is None:
+                    commentList.append([PR[0], "@" + PR[2] + " would you like to request a review?"])
+                else:
+                    commentList.append([PR[0], "@" + reviewer + " have you been able to review the code?"])
+            elif review_state == 'APPROVED':
+                if reviewer is None:
+                    commentList.append([PR[0], "@" + review_author + " could this be given to the gatekeepers?"])
+                else:
+                    commentList.append([PR[0], "@" + reviewer + " have you been able to review the code?"])
+            else:
+                commentList.append([PR[0], "@" + PR[2] + " have you been able to respond to the review?"])
 
-            print(PR[0], PR[1], review_author, review_state, reviewer, assignees,
-                    mergeable)
+        del self.variables['pr_number'] 
+        return commentList
+
+    # Returns a list of PRs, with comment message aimed at author of failed commit
+    def failMessage(self, PRlist):
+        commentList = []
+        for PR in PRlist:
+            commentList.append([PR[0], "@" + PR[2] + " have you been able locate what's causing the build error?"])
+        return commentList
+
+    def commentOnPullRequests(self, commentList)
 
 
 # Testing
@@ -239,4 +239,8 @@ if __name__ == '__main__':
     g = Query()
     PRlist = g.fetchStalePullRequests()
     successes, fails = g.sortPRs_buildStatus(PRlist)
-    g.fetchReviews(successes)
+    successComments = g.successMessage(successes)
+    failComments = g.failMessage(fails)
+    successComments.extend(failComments)
+
+    print(successComments)
