@@ -18,10 +18,10 @@ class Query(object):
         self.auth = {"Authorization": bearer_token}
 
         # Initialise empty GraphQL variables dictionary
-        self.variables = {'repo_owner': 'mantidproject', 'repo_name' : 'mantid'}
+        self.variables = {'repo_owner': 'michaeljturner', 'repo_name' : 'APItesting'}
 
         # Threshold for pull requests to become stale (days)
-        self.staleThreshold = 8
+        self.staleThreshold = 0
         # Number of results to return per page
         self.page_size = 25
 
@@ -40,8 +40,9 @@ class Query(object):
 
     # Calculates the difference between time now and the input time in days
     def elapsedDays(self, timeString):
+        # Reads in the time string (given in UTC) into a datetime object
         inputTime = datetime.strptime(timeString, "%Y-%m-%dT%H:%M:%SZ")
-
+        # Returns the floor of the number of days difference (from timedelta)
         return (datetime.now() - inputTime).days
 
 
@@ -109,6 +110,7 @@ query($repo_owner: String!, $repo_name: String!, $page_size: Int!, $cursor: Stri
 query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
     repository(owner: $repo_owner, name: $repo_name){
         pullRequest(number: $pr_number){
+            id
             commits(last: 1){
                 nodes{
                     commit{
@@ -127,14 +129,21 @@ query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
     }
 }
 """
+        # Initialise lists to hold commits which have passed and failed the build checks
         successful_commits = []
         failed_commits = []
+
         for PR in PRlist:
+            # Read in Pull Request number as variable
             self.variables['pr_number'] = PR[0]
             data = self.sendQuery(query)
 
-            commit_status = data['data']['repository']['pullRequest']['commits']\
-                                ['nodes'][0]['commit']['status']['state']
+            # Catch error if Pull Request has no associated build checks
+            try:
+                commit_status = data['data']['repository']['pullRequest']['commits']\
+                                    ['nodes'][0]['commit']['status']['state']
+            except TypeError:
+                commit_status = None
             # Catch if user = None (potentially because account has been removed from mantid team)
             try:
                 commit_author = data['data']['repository']['pullRequest']\
@@ -143,7 +152,9 @@ query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
             except TypeError:
                 commit_author = ''
 
+            # Add commit_author and pull request ID
             PR.append(commit_author)
+            PR.append(data['data']['repository']['pullRequest']['id'])
             if commit_status == 'SUCCESS':
                 successful_commits.append(PR)
             else:
@@ -183,6 +194,7 @@ query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
     }
 }
 """
+        # Initialise list to hold data needed to comment on pull requests
         commentList = []
         # Loop through PRs which have built successfully
         for PR in PRlist:
@@ -191,7 +203,7 @@ query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
             # Send Query
             data = self.sendQuery(query)
 
-            # Store data variables
+            # Store data variables.  Catch if there are no reviews
             try:
                 review_state = data['data']['repository']['pullRequest']\
                                     ['reviews']['nodes'][0]['state']
@@ -200,6 +212,7 @@ query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
             except (TypeError, IndexError) as error:
                 review_state = None
 
+            # Catch error if there are no review requests
             try:
                 reviewer = data['data']['repository']['pullRequest']\
                                 ['reviewRequests']['nodes'][0]['reviewer']['login']
@@ -209,38 +222,88 @@ query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
 
             # Choose login to @___ comment
             if review_state is None:
+                # No review or review request
                 if reviewer is None:
-                    commentList.append([PR[0], "@" + PR[2] + " would you like to request a review?"])
+                    commentList.append([PR[3], "@" + PR[2] + " would you like to request a review?"])
+                # There is a review request, but no review
                 else:
-                    commentList.append([PR[0], "@" + reviewer + " have you been able to review the code?"])
+                    commentList.append([PR[3], "@" + reviewer + " have you been able to review the code?"])
+            # The last review approved the code
             elif review_state == 'APPROVED':
+                # No review request - potentially could ask gatekeepers, but leave the decision to the PR author
                 if reviewer is None:
-                    commentList.append([PR[0], "@" + review_author + " could this be given to the gatekeepers?"])
+                    commentList.append([PR[3], "@" + review_author + " could this be given to the gatekeepers?"])
+                # There is another review request
                 else:
-                    commentList.append([PR[0], "@" + reviewer + " have you been able to review the code?"])
+                    commentList.append([PR[3], "@" + reviewer + " have you been able to review the code?"])
+            # The last review requested changes, but there has been no response from the PR author
             else:
-                commentList.append([PR[0], "@" + PR[2] + " have you been able to respond to the review?"])
+                commentList.append([PR[3], "@" + PR[2] + " have you been able to respond to the review?"])
 
-        del self.variables['pr_number'] 
+        # Catch error if no stale pull requests
+        try:
+            del self.variables['pr_number']
+        except KeyError:
+            pass
+
         return commentList
 
     # Returns a list of PRs, with comment message aimed at author of failed commit
     def failMessage(self, PRlist):
         commentList = []
         for PR in PRlist:
-            commentList.append([PR[0], "@" + PR[2] + " have you been able locate what's causing the build error?"])
+            commentList.append([PR[3], "@" + PR[2] + " have you been able locate what's causing the build error?"])
         return commentList
 
-    def commentOnPullRequests(self, commentList)
+    def commentOnPullRequests(self, commentList):
+        mutation="""
+mutation($pr_id: ID!, $message: String!){
+    addComment(input: {subjectId: $pr_id, body: $message}){
+        subject{
+            id
+        }
+    }
+}
+"""
 
+        # No need for repository variables in mutation query - store and remove from
+        # query variables, to avoid a GitHub error
+        repo_name = self.variables['repo_name']
+        repo_owner = self.variables['repo_owner']
+        del self.variables['repo_owner']
+        del self.variables['repo_name']
+
+        # Iterate through stale pull requests, and comment the message chosen
+        for comment in commentList:
+            self.variables['pr_id'] = comment[0]
+            message = comment[1]
+            # If the chosen user to comment at no longer exists, notify Nick Draper
+            if message[1] == " ":
+                message_update = "@NickDraper" + message[2:]
+            self.variables['message'] = comment[-1]
+
+            self.sendQuery(mutation)
+
+        try:
+            del self.variables['pr_id']
+            del self.variables['message']
+        except KeyError:
+            pass
+
+        # Restore repository variables
+        self.variables['repo_name'] = repo_name
+        self.variables['repo_owner'] = repo_owner
+
+    # Function to wrap everything up into a few lines
+    def notifyStalePullRequests(self):
+        PRlist = self.fetchStalePullRequests()
+        successes, fails = self.sortPRs_buildStatus(PRlist)
+        comments = self.successMessage(successes)
+        comments.extend(self.failMessage(fails))
+
+        self.commentOnPullRequests(comments)
 
 # Testing
 if __name__ == '__main__':
     g = Query()
-    PRlist = g.fetchStalePullRequests()
-    successes, fails = g.sortPRs_buildStatus(PRlist)
-    successComments = g.successMessage(successes)
-    failComments = g.failMessage(fails)
-    successComments.extend(failComments)
-
-    print(successComments)
+    g.notifyStalePullRequests()
