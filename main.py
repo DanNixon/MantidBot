@@ -2,9 +2,12 @@ import json
 import requests
 from datetime import datetime
 
-# Class for handling GraphQL queries for GitHub's APIv4
+
 class Query(object):
-    # Initialise default parameters
+    """
+    Class for handling GraphQL queries for GitHub's APIv4
+    """
+
     def __init__(self):
         # GitHub APIv4 endpoint
         self.endpoint = "https://api.github.com/graphql"
@@ -18,15 +21,20 @@ class Query(object):
         self.auth = {"Authorization": bearer_token}
 
         # Initialise empty GraphQL variables dictionary
-        self.variables = {'repo_owner': 'michaeljturner', 'repo_name' : 'APItesting'}
+        self.variables = {
+                'repo_owner': 'michaeljturner',
+                'repo_name': 'APItesting'
+            }
 
         # Threshold for pull requests to become stale (days)
         self.staleThreshold = 0
         # Number of results to return per page
         self.page_size = 25
 
-    # Sends Query as JSON object, reply formatted as nested python dictionary
     def sendQuery(self, query):
+        """
+        Sends Query as JSON object, reply formatted as nested python dictionary
+        """
         # Read query and variables into JSON formatted string
         message = json.dumps({"query": query, "variables": self.variables})
         # Convert Python None to JSON null
@@ -38,16 +46,19 @@ class Query(object):
         # Return reply as a nested Python dictionary
         return reply.json()
 
-    # Calculates the difference between time now and the input time in days
     def elapsedDays(self, timeString):
+        """
+        Calculates the difference between time now and the input time in days
+        """
         # Reads in the time string (given in UTC) into a datetime object
         inputTime = datetime.strptime(timeString, "%Y-%m-%dT%H:%M:%SZ")
         # Returns the floor of the number of days difference (from timedelta)
         return (datetime.now() - inputTime).days
 
-
-    # Fetches pull request number of all stale pull requests
     def fetchStalePullRequests(self):
+        """
+        Fetches pull request number of all stale pull requests
+        """
         # GraphQL query
         query = """
 query($repo_owner: String!, $repo_name: String!, $page_size: Int!, $cursor: String){
@@ -76,7 +87,7 @@ query($repo_owner: String!, $repo_name: String!, $page_size: Int!, $cursor: Stri
         # Fetch data from GitHub, iterate through Pull Requests if
         # there are more pages of data
         while True:
-            #Store reply
+            # Store reply
             data = self.sendQuery(query)
 
             # Iterate through the nodes list, check if Pull Request is stale
@@ -102,9 +113,11 @@ query($repo_owner: String!, $repo_name: String!, $page_size: Int!, $cursor: Stri
         # Return stale Pull Requests as tuple (number, days elapsed)
         return stalePRs
 
-
-    # Fetches the status and author of the most recent commits on each pull request
     def sortPRs_buildStatus(self, PRlist):
+        """
+        Fetches the status and author of the most recent commits on each pull
+        request
+        """
         # Graph QL query
         query = """
 query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
@@ -129,7 +142,8 @@ query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
     }
 }
 """
-        # Initialise lists to hold commits which have passed and failed the build checks
+        # Initialise lists to hold commits which have passed and failed the
+        # build checks
         successful_commits = []
         failed_commits = []
 
@@ -168,9 +182,10 @@ query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
 
         return (successful_commits, failed_commits)
 
-
-    # Selects which user to ask about the stale PR (build: SUCCESS)
     def successMessage(self, PRlist):
+        """
+        Selects which user to ask about the stale PR (build: SUCCESS)
+        """
         query = """
 query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
     repository(owner: $repo_owner, name: $repo_name){
@@ -209,16 +224,15 @@ query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
                                     ['reviews']['nodes'][0]['state']
                 review_author = data['data']['repository']['pullRequest']\
                                     ['reviews']['nodes'][0]['author']['login']
-            except (TypeError, IndexError) as error:
+            except (TypeError, IndexError):
                 review_state = None
 
             # Catch error if there are no review requests
             try:
                 reviewer = data['data']['repository']['pullRequest']\
                                 ['reviewRequests']['nodes'][0]['reviewer']['login']
-            except (TypeError, IndexError) as error:
+            except (TypeError, IndexError):
                 reviewer = None
-
 
             # Choose login to @___ comment
             if review_state is None:
@@ -230,13 +244,15 @@ query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
                     commentList.append([PR[3], "@" + reviewer + " have you been able to review the code?"])
             # The last review approved the code
             elif review_state == 'APPROVED':
-                # No review request - potentially could ask gatekeepers, but leave the decision to the PR author
+                # No review request - potentially could ask gatekeepers, but
+                # leave the decision to the PR author
                 if reviewer is None:
                     commentList.append([PR[3], "@" + review_author + " could this be given to the gatekeepers?"])
                 # There is another review request
                 else:
                     commentList.append([PR[3], "@" + reviewer + " have you been able to review the code?"])
-            # The last review requested changes, but there has been no response from the PR author
+            # The last review requested changes, but there has been no response
+            # from the PR author
             else:
                 commentList.append([PR[3], "@" + PR[2] + " have you been able to respond to the review?"])
 
@@ -248,7 +264,8 @@ query($repo_owner: String!, $repo_name: String!, $pr_number: Int!){
 
         return commentList
 
-    # Returns a list of PRs, with comment message aimed at author of failed commit
+    # Returns a list of PRs, with comment message aimed at author of failed
+    # commit
     def failMessage(self, PRlist):
         commentList = []
         for PR in PRlist:
@@ -266,8 +283,8 @@ mutation($pr_id: ID!, $message: String!){
 }
 """
 
-        # No need for repository variables in mutation query - store and remove from
-        # query variables, to avoid a GitHub error
+        # No need for repository variables in mutation query - store and remove
+        # from query variables, to avoid a GitHub error
         repo_name = self.variables['repo_name']
         repo_owner = self.variables['repo_owner']
         del self.variables['repo_owner']
@@ -277,7 +294,8 @@ mutation($pr_id: ID!, $message: String!){
         for comment in commentList:
             self.variables['pr_id'] = comment[0]
             message = comment[1]
-            # If the chosen user to comment at no longer exists, notify Nick Draper
+            # If the chosen user to comment at no longer exists, notify Nick
+            # Draper
             if message[1] == " ":
                 message_update = "@NickDraper" + message[2:]
             self.variables['message'] = comment[-1]
@@ -294,14 +312,17 @@ mutation($pr_id: ID!, $message: String!){
         self.variables['repo_name'] = repo_name
         self.variables['repo_owner'] = repo_owner
 
-    # Function to wrap everything up into a few lines
     def notifyStalePullRequests(self):
+        """
+        Function to wrap everything up into a few lines
+        """
         PRlist = self.fetchStalePullRequests()
         successes, fails = self.sortPRs_buildStatus(PRlist)
         comments = self.successMessage(successes)
         comments.extend(self.failMessage(fails))
 
         self.commentOnPullRequests(comments)
+
 
 # Testing
 if __name__ == '__main__':
