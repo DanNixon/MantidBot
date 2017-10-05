@@ -6,6 +6,7 @@ from .filtering import (
         filter_to_ci_pass,
         filter_to_ci_fail,
         is_author_of_last_commit_no_longer_a_mantid_dev,
+        does_this_pr_have_merge_conflicts,
         has_noone_reviewed_this_pr,
         has_a_reviewer_not_reviewed_this_pr,
         has_a_gatekeeper_not_reviewed_this_accepted_pr,
@@ -26,11 +27,12 @@ def main(token, org, repo, list_prs, generate_comments, do_commenting):
     prs = {}
 
     all_prs = gh_client.fetch_pull_requests()
+
+    prs['no_dev'] = list(filter(is_author_of_last_commit_no_longer_a_mantid_dev, all_prs))
+    prs['conflicting'] = list(filter(does_this_pr_have_merge_conflicts, all_prs))
+    prs['failing'] = list(filter_to_ci_fail(all_prs))
+
     stale_prs = list(filter_to_stale_prs(1, all_prs))
-
-    prs['no_dev'] = list(filter(is_author_of_last_commit_no_longer_a_mantid_dev, stale_prs))
-    prs['failing'] = list(filter_to_ci_fail(stale_prs))
-
     stale_passing_prs = list(filter_to_ci_pass(stale_prs))
 
     prs['unreviewed'] = list(filter(has_noone_reviewed_this_pr, stale_passing_prs))

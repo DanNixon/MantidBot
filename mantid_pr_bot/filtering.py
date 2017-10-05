@@ -77,6 +77,13 @@ def filter_to_ci_fail(prs):
     return filter(f, prs)
 
 
+def does_this_pr_have_merge_conflicts(pr):
+    """
+    Returns true if this PR has conflicts and cannot be automatically merged.
+    """
+    return pr['mergeable'] == 'CONFLICTING'
+
+
 def has_noone_reviewed_this_pr(pr):
     """
     Returns true if there are no reviews and no review requests.

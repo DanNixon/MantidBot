@@ -47,6 +47,7 @@ class GitHubClient(object):
             - PR number (ret[i]['number'])
             - Time last updated (ret[i]['updatedAt'])
             - GitHub URL (ret[i]['url'])
+            - Mergeable state ([ret[i]['mergeable']])
             - Last commit (ret[i]['commits']['nodes'][0])
                 - Author's GitHub username (commit['commit']['author']['user']['login'])
                 - CI status (commit['commit']['status']['state'])
@@ -71,6 +72,7 @@ class GitHubClient(object):
                             number
                             updatedAt
                             url
+                            mergeable
                             commits(last: 1){
                                 nodes{
                                     commit{
