@@ -135,3 +135,38 @@ class GitHubClient(object):
         del self.variables['page_size'], self.variables['cursor']
 
         return pull_requests
+
+    def post_comments_on_pull_requests(self, comments):
+        mutation = \
+            """
+            mutation($pr_id: ID!, $message: String!){
+                addComment(input: {subjectId: $pr_id, body: $message}){
+                    subject{
+                        id
+                    }
+                }
+            }
+            """
+
+        # No need for repository variables in mutation query - store and remove
+        # from query variables, to avoid a GitHub error
+        repo_name = self.variables['repo_name']
+        repo_owner = self.variables['repo_owner']
+        del self.variables['repo_owner']
+        del self.variables['repo_name']
+
+        # Iterate through stale pull requests, and comment the message chosen
+        for c in comments:
+            self.variables['pr_id'] = c[0]['id']
+            self.variables['message'] = c[1]
+            self.send_query(mutation)
+
+        try:
+            del self.variables['pr_id']
+            del self.variables['message']
+        except KeyError:
+            pass
+
+        # Restore repository variables
+        self.variables['repo_name'] = repo_name
+        self.variables['repo_owner'] = repo_owner

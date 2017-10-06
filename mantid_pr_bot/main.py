@@ -67,6 +67,6 @@ def main(token, stale_days, org, repo, list_prs, list_comments, do_commenting, f
         if force or click.confirm('This will post several comments under the '
                                   'owner of --token, do you want to continue?'):
             click.echo('Posting comments')
-            # TODO
+            gh_client.post_comments_on_pull_requests(comments)
         else:
             click.echo('Commenting was cancelled!')
