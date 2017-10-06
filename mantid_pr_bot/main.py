@@ -8,6 +8,8 @@ from .resolutions import generate_resolution_comments
 @click.command()
 @click.option('--token', type=str, required=True,
               help='GitHub Personal Access token.')
+@click.option('--stale-days', type=int, default=14,
+              help='GitHub Personal Access token.')
 @click.option('--org', type=str, default='mantidproject',
               help='User/Organisation that owns the repository.')
 @click.option('--repo', type=str, default='mantid',
@@ -20,7 +22,7 @@ from .resolutions import generate_resolution_comments
               help='Apply the chosen comments to each PR.')
 @click.option('--force', is_flag=True,
               help='Skip confirmation prompts')
-def main(token, org, repo, list_prs, list_comments, do_commenting, force):
+def main(token, stale_days, org, repo, list_prs, list_comments, do_commenting, force):
     """
     Tool used to gently remind people when a pull request goes stale.
 
@@ -36,7 +38,7 @@ def main(token, org, repo, list_prs, list_comments, do_commenting, force):
     gh_client = GitHubClient(token, org, repo)
 
     all_prs = gh_client.fetch_pull_requests()
-    prs = filter_prs(all_prs)
+    prs = filter_prs(all_prs, stale_days)
 
     # List all PRs in each category
     if list_prs:
@@ -54,17 +56,17 @@ def main(token, org, repo, list_prs, list_comments, do_commenting, force):
 
     # Print the list of comments for review
     if list_comments:
-        click.echo('All comments:')
+        click.echo('All comments ({}):'.format(len(comments)))
         for c in comments:
             click.echo('#{} ({})'.format(c[0]['number'], c[0]['url']))
             click.echo('\t{}'.format(c[1]))
         click.echo()
 
     # Post comments on pull requests
-    if do_commenting and (force or click.confirm(
-            'This will post several comments under the owner of --token, do you '
-            'want to continue?')):
-        click.echo('Posting comments')
-        # TODO
-    else:
-        click.echo('Commenting was cancelled!')
+    if do_commenting:
+        if force or click.confirm('This will post several comments under the '
+                                  'owner of --token, do you want to continue?'):
+            click.echo('Posting comments')
+            # TODO
+        else:
+            click.echo('Commenting was cancelled!')

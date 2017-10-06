@@ -109,6 +109,9 @@ def fill_random_response_message(problem_type, pr):
     @param pr Pull request to process
     @return Comment text
     """
+    if problem_type not in resolutions.keys():
+        problem_type = 'generic'
+
     usernames = resolutions[problem_type][0](pr)
     idx = randrange(0, len(resolutions[problem_type][1]))
     return fill_message_template(resolutions[problem_type][1][idx], usernames)
