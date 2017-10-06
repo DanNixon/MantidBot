@@ -1,17 +1,8 @@
 import click
 
 from .github import GitHubClient
-from .filtering import (
-        filter_to_stale_prs,
-        filter_to_ci_pass,
-        filter_to_ci_fail,
-        is_author_of_last_commit_no_longer_a_mantid_dev,
-        does_this_pr_have_merge_conflicts,
-        has_noone_reviewed_this_pr,
-        has_a_reviewer_not_reviewed_this_pr,
-        has_a_gatekeeper_not_reviewed_this_accepted_pr,
-        has_a_requested_reviewer_not_reviewed_this_pr,
-        has_the_author_not_responded_to_review_comments)
+from .workflow import filter_prs
+from .resolutions import generate_resolution_comments
 
 
 @click.command()
@@ -19,45 +10,32 @@ from .filtering import (
 @click.option('--org', type=str, default='mantidproject')
 @click.option('--repo', type=str, default='mantid')
 @click.option('--list-prs/--no-list-prs', default=False)
-@click.option('--generate-comments/--no-generate-comments', default=False)
+@click.option('--list-comments/--no-list-comments', default=False)
 @click.option('--do-commenting/--no-do-commenting', default=False)
-def main(token, org, repo, list_prs, generate_comments, do_commenting):
+def main(token, org, repo, list_prs, list_comments, do_commenting):
     gh_client = GitHubClient(token, org, repo)
 
-    prs = {}
-
     all_prs = gh_client.fetch_pull_requests()
+    prs = filter_prs(all_prs)
 
-    prs['no_dev'] = list(filter(is_author_of_last_commit_no_longer_a_mantid_dev, all_prs))
-    prs['conflicting'] = list(filter(does_this_pr_have_merge_conflicts, all_prs))
-    prs['failing'] = list(filter_to_ci_fail(all_prs))
-
-    stale_prs = list(filter_to_stale_prs(1, all_prs))
-    stale_passing_prs = list(filter_to_ci_pass(stale_prs))
-
-    prs['unreviewed'] = list(filter(has_noone_reviewed_this_pr, stale_passing_prs))
-    prs['pending_review'] = list(filter(has_a_reviewer_not_reviewed_this_pr, stale_passing_prs))
-    prs['pending_gatekeeper'] = list(filter(has_a_gatekeeper_not_reviewed_this_accepted_pr, stale_passing_prs))
-    prs['review_requested'] = list(filter(has_a_requested_reviewer_not_reviewed_this_pr, stale_passing_prs))
-    prs['ignored_review'] = list(filter(has_the_author_not_responded_to_review_comments, stale_passing_prs))
-
+    # List all PRs in each category
     if list_prs:
         for name, prs in prs.items():
             click.echo('{} ({})'.format(name, len(prs)))
             for pr in prs:
                 click.echo(' - #{} ({})'.format(pr['number'], pr['url']))
 
-    comments = []
-    if generate_comments or do_commenting:
-        # generate comments
-        pass
+    comments = None
+    if list_comments or do_commenting:
+        comments = generate_resolution_comments(prs)
 
-    if generate_comments:
-        # print comments
-        pass
+    if list_comments:
+        for c in comments:
+            click.echo('#{} ({})'.format(c[0]['number'], c[0]['url']))
+            click.echo('\t{}'.format(c[1]))
 
     if do_commenting:
-        # post comments
+        # TODO
         pass
 
 
