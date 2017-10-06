@@ -44,6 +44,7 @@ class GitHubClient(object):
         Gets a list of pull requests.
 
         Fields that are requested:
+            - PR ID (ret[i]['id'])
             - PR number (ret[i]['number'])
             - Time last updated (ret[i]['updatedAt'])
             - GitHub URL (ret[i]['url'])
@@ -57,7 +58,7 @@ class GitHubClient(object):
             - PR review request (ret[i]['reviewRequests'][j])
                 - Reviewer's GitHub username (item['nodes'][i]['reviewer']['login'])
 
-        @returns List of pull requests with filtered fields
+        @return List of pull requests with filtered fields
         """
         query = \
             """
@@ -69,6 +70,7 @@ class GitHubClient(object):
                             endCursor
                         }
                         nodes{
+                            id
                             number
                             updatedAt
                             url
