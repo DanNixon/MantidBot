@@ -35,6 +35,11 @@ def main(token, stale_days, org, repo, list_prs, list_comments, do_commenting, f
     not necessarily the comment that will be posted by --do-commenting in
     separate invocations).
     """
+    click.echo('Organisation: {}'.format(org))
+    click.echo('Repository: {}'.format(repo))
+    click.echo('Stale days: {}'.format(stale_days))
+    click.echo()
+
     gh_client = GitHubClient(token, org, repo)
 
     all_prs = gh_client.fetch_pull_requests()
@@ -63,9 +68,10 @@ def main(token, stale_days, org, repo, list_prs, list_comments, do_commenting, f
         click.echo()
 
     # Post comments on pull requests
-    if do_commenting:
-        if force or click.confirm('This will post several comments under the '
-                                  'owner of --token, do you want to continue?'):
+    if do_commenting and comments:
+        if force or click.confirm(
+                'This will post several comments to {}/{} under the owner of '
+                '--token, do you want to continue?'.format(org, repo)):
             click.echo('Posting comments')
             gh_client.post_comments_on_pull_requests(comments)
         else:
