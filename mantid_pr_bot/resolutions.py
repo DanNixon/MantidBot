@@ -3,10 +3,21 @@ from string import Template
 
 
 def get_admins(pr):
+    """
+    Gets a list of admins to be notified for unexpected or edge case
+    situations.
+
+    @return Nick
+    """
     return ['NickDraper']
 
 
 def get_pr_developer(pr):
+    """
+    Gets the developer of a pull request (the author of the last commit).
+
+    @return Single element list containing current developer
+    """
     try:
         developer = pr['commits']['nodes'][0]['commit']['author']['user']['login']
         return [developer]
@@ -15,10 +26,22 @@ def get_pr_developer(pr):
 
 
 def get_pending_reviewers(pr):
+    """
+    Gets a list of all users that have yet to complete a review (i.e. they have
+    started one or been assigned to provide one but are yet to complete one).
+
+    @return List of usernames of pending review authors.
+    """
     return [r['author']['login'] for r in pr['reviews']['nodes'] if r['state'] == 'PENDING']
 
 
 def get_requested_reviewers(pr):
+    """
+    Gets a list of users who have outstanding review requests on a pull
+    request.
+
+    @return List of users from which reviews are requested
+    """
     return [rr['reviewer']['login'] for rr in pr['reviewRequests']['nodes']]
 
 
@@ -61,6 +84,13 @@ resolutions = {
 
 
 def fill_message_template(template, usernames):
+    """
+    Fills a message template with a list of usernames.
+
+    @template Comment string template
+    @usernames Single string or list of strings containing usernames
+    @return Comment text
+    """
     if not isinstance(usernames, list):
         usernames = [usernames]
 
@@ -70,15 +100,29 @@ def fill_message_template(template, usernames):
     return msg_str
 
 
-def fill_random_response_message(response_type, pr):
-    usernames = resolutions[response_type][0](pr)
-    idx = randrange(0, len(resolutions[response_type][1]))
-    return fill_message_template(resolutions[response_type][1][idx], usernames)
+def fill_random_response_message(problem_type, pr):
+    """
+    Selects and generates a random comment text for a PR, extracting the
+    relevant users to be notified.
+
+    @param problem_type Type of problem message desired
+    @param pr Pull request to process
+    @return Comment text
+    """
+    usernames = resolutions[problem_type][0](pr)
+    idx = randrange(0, len(resolutions[problem_type][1]))
+    return fill_message_template(resolutions[problem_type][1][idx], usernames)
 
 
 def generate_resolution_comments(sorted_prs):
+    """
+    Generates a resolution comment for each sorted pull request.
+
+    @param sorted_prs Dictionary of response type to list of pull requests
+    @return List of (pull request, comment text) tuples
+    """
     comments = []
-    for response_type, prs in sorted_prs.items():
+    for problem_type, prs in sorted_prs.items():
         comments.extend(
-                [(pr, fill_random_response_message(response_type, pr)) for pr in prs])
+                [(pr, fill_random_response_message(problem_type, pr)) for pr in prs])
     return comments

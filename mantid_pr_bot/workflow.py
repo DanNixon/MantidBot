@@ -14,6 +14,13 @@ from .filtering import (
 
 
 def filter_prs(all_prs):
+    """
+    Sorts/filters pull requests into several "problem categories".
+
+    @param all_prs List of all pull requests retrieved from GitHub API
+    @return Dictionary of problem type to list of affected pull requests
+    """
+
     prs = {}
 
     prs['no_dev'] = list(filter(
