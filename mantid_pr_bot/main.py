@@ -12,13 +12,15 @@ from .resolutions import generate_resolution_comments
               help='User/Organisation that owns the repository.')
 @click.option('--repo', type=str, default='mantid',
               help='Repository to operate on.')
-@click.option('--list-prs/--no-list-prs', default=False,
+@click.option('--list-prs', is_flag=True,
               help='List the PRs in each problem category.')
-@click.option('--list-comments/--no-list-comments', default=False,
+@click.option('--list-comments', is_flag=True,
               help='List the chosen comments for each PR.')
-@click.option('--do-commenting/--no-do-commenting', default=False,
+@click.option('--do-commenting', is_flag=True,
               help='Apply the chosen comments to each PR.')
-def main(token, org, repo, list_prs, list_comments, do_commenting):
+@click.option('--force', is_flag=True,
+              help='Skip confirmation prompts')
+def main(token, org, repo, list_prs, list_comments, do_commenting, force):
     """
     Tool used to gently remind people when a pull request goes stale.
 
@@ -28,7 +30,8 @@ def main(token, org, repo, list_prs, list_comments, do_commenting):
 
     There are several possible comment messages for each problem category to
     add a little variety (therefore note that the output of --list-comments is
-    not necessarily the comment that will be posted by --do-commenting).
+    not necessarily the comment that will be posted by --do-commenting in
+    separate invocations).
     """
     gh_client = GitHubClient(token, org, repo)
 
@@ -37,10 +40,12 @@ def main(token, org, repo, list_prs, list_comments, do_commenting):
 
     # List all PRs in each category
     if list_prs:
+        click.echo('Sorted pull requests:')
         for name, prs in prs.items():
             click.echo('{} ({})'.format(name, len(prs)))
             for pr in prs:
                 click.echo(' - #{} ({})'.format(pr['number'], pr['url']))
+        click.echo()
 
     # Generate the list of comments
     comments = None
@@ -49,11 +54,17 @@ def main(token, org, repo, list_prs, list_comments, do_commenting):
 
     # Print the list of comments for review
     if list_comments:
+        click.echo('All comments:')
         for c in comments:
             click.echo('#{} ({})'.format(c[0]['number'], c[0]['url']))
             click.echo('\t{}'.format(c[1]))
+        click.echo()
 
     # Post comments on pull requests
-    if do_commenting:
+    if do_commenting and (force or click.confirm(
+            'This will post several comments under the owner of --token, do you '
+            'want to continue?')):
+        click.echo('Posting comments')
         # TODO
-        pass
+    else:
+        click.echo('Commenting was cancelled!')
