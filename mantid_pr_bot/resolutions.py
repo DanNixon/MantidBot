@@ -9,9 +9,9 @@ def get_admins(pr):
     Gets a list of admins to be notified for unexpected or edge case
     situations.
 
-    @return Nick
+    @return Gatekeepers
     """
-    return ['NickDraper']
+    return ['@mantidproject/gatekeepers']
 
 
 def get_pr_developer(pr):
