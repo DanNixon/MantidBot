@@ -11,7 +11,7 @@ def get_admins(pr):
 
     @return Gatekeepers
     """
-    return ['@mantidproject/gatekeepers']
+    return ['mantidproject/gatekeepers']
 
 
 def get_pr_developer(pr):
