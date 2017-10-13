@@ -39,6 +39,25 @@ class GitHubClient(object):
         # Return reply as a nested Python dictionary
         return reply.json()
 
+    def get_my_username(self):
+        """
+        Gets the GitHub username of the authenticaed user (i.e. the owner of
+        the auth token).
+
+        @return Username
+        """
+        query = \
+            """
+            query {
+                viewer {
+                    login
+                }
+            }
+            """
+
+        data = self.send_query(query)
+        return data['data']['viewer']['login']
+
     def fetch_pull_requests(self):
         """
         Gets a list of pull requests.
@@ -58,56 +77,69 @@ class GitHubClient(object):
                 - Reviewer's GitHub username (item['nodes'][i]['author']['login'])
             - PR review request (ret[i]['reviewRequests'][j])
                 - Reviewer's GitHub username (item['nodes'][i]['reviewer']['login'])
+            - Last 10 PR comments (ret[i]['comments']['nodes'][j])
+                - Comment author's GitHub username (item['author']['login'])
+                - Time comment was posted (item['createdAt'])
+                - Comment body (item['body'])
 
         @return List of pull requests with filtered fields
         """
         query = \
             """
-            query($repo_owner: String!, $repo_name: String!, $page_size: Int!, $cursor: String){
-                repository(owner: $repo_owner, name: $repo_name){
-                    pullRequests(first: $page_size, after: $cursor, states: [OPEN]){
-                        pageInfo{
+            query($repo_owner: String!, $repo_name: String!, $page_size: Int!, $cursor: String) {
+                repository(owner: $repo_owner, name: $repo_name) {
+                    pullRequests(first: $page_size, after: $cursor, states: [OPEN]) {
+                        pageInfo {
                             hasNextPage
                             endCursor
                         }
-                        nodes{
+                        nodes {
                             id
                             number
                             updatedAt
                             url
                             mergeable
-                            commits(last: 1){
-                                nodes{
-                                    commit{
-                                        author{
-                                            user{
+                            commits(last: 1) {
+                                nodes {
+                                    commit {
+                                        author {
+                                            user {
                                                 login
                                             }
                                         }
-                                        committer{
-                                            user{
+                                        committer {
+                                            user {
                                                 login
                                             }
                                         }
-                                        status{
+                                        status {
                                             state
                                         }
                                     }
                                 }
                             }
-                            reviews(last: 10){
-                                nodes{
+                            reviews(last: 10) {
+                                nodes {
                                     state
-                                    author{
+                                    author {
                                         login
                                     }
                                 }
                             }
-                            reviewRequests(last: 10){
-                                nodes{
-                                    reviewer{
+                            reviewRequests(last: 10) {
+                                nodes {
+                                    reviewer {
                                         login
                                     }
+                                }
+                            }
+                            comments(last: 10) {
+                                nodes {
+                                    author {
+                                        login
+                                    }
+                                    body
+                                    createdAt
                                 }
                             }
                         }
@@ -145,9 +177,9 @@ class GitHubClient(object):
     def post_comments_on_pull_requests(self, comments):
         mutation = \
             """
-            mutation($pr_id: ID!, $message: String!){
-                addComment(input: {subjectId: $pr_id, body: $message}){
-                    subject{
+            mutation($pr_id: ID!, $message: String!) {
+                addComment(input: {subjectId: $pr_id, body: $message}) {
+                    subject {
                         id
                     }
                 }

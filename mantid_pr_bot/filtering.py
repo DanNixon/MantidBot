@@ -1,9 +1,26 @@
+import re
+
 from datetime import datetime
 from functools import partial
 
 
 def count_reviews(pr):
     return len([r for r in pr['reviews']['nodes'] if r['state'] != 'COMMENTED'])
+
+
+def get_markdown_comment_in_comment(comment_raw):
+    r = re.compile('\<\!\-{2}(.*)\-{2}\>')
+    m = r.search(comment_raw)
+    return m.groups(1) if m else None
+
+
+def get_last_bot_comment_in_pr_with_md_comment(pr, bot_username):
+    for c in pr['comments']['nodes']:
+        md_comment = get_markdown_comment_in_comment(c['body'])
+        if c['author']['login'] == bot_username and md_comment:
+            return c
+
+    return None
 
 
 def has_pr_not_been_updated_since(threshold_days, pr):

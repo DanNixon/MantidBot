@@ -42,6 +42,10 @@ def main(token, stale_days, org, repo, list_prs, list_comments, do_commenting, f
 
     gh_client = GitHubClient(token, org, repo)
 
+    username = gh_client.get_my_username()
+    click.echo('Token owner is: {}'.format(username))
+    click.echo()
+
     all_prs = gh_client.fetch_pull_requests()
     filtered_prs = filter_prs(all_prs, stale_days)
 
@@ -71,8 +75,8 @@ def main(token, stale_days, org, repo, list_prs, list_comments, do_commenting, f
     # Post comments on pull requests
     if do_commenting and comments:
         if force or click.confirm(
-                'This will post several comments to {}/{} under the owner of '
-                '--token, do you want to continue?'.format(org, repo)):
+                'This will post several comments to {}/{} as {}, '
+                'do you want to continue?'.format(org, repo, username)):
             click.echo('Posting comments')
             gh_client.post_comments_on_pull_requests(comments)
         else:
