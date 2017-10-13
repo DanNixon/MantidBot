@@ -56,7 +56,7 @@ resolutions = {
         Template('$users this PR is now without a developer.')
     ]),
     'conflicting': (get_pr_developer, [
-        Template('$users there are merge conflicts here, can you resolve them.')
+        Template('$users there are conflicts here, can you resolve them.')
     ]),
     'failing': (get_pr_developer, [
         Template('$users the build is failing, can you investigate.'),
