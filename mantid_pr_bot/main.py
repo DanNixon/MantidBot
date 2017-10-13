@@ -43,12 +43,12 @@ def main(token, stale_days, org, repo, list_prs, list_comments, do_commenting, f
     gh_client = GitHubClient(token, org, repo)
 
     all_prs = gh_client.fetch_pull_requests()
-    prs = filter_prs(all_prs, stale_days)
+    filtered_prs = filter_prs(all_prs, stale_days)
 
     # List all PRs in each category
     if list_prs:
         click.echo('Sorted pull requests:')
-        for name, prs in prs.items():
+        for name, prs in filtered_prs.items():
             click.echo('{} ({})'.format(name, len(prs)))
             for pr in prs:
                 click.echo(' - #{} ({})'.format(pr['number'], pr['url']))
@@ -57,7 +57,7 @@ def main(token, stale_days, org, repo, list_prs, list_comments, do_commenting, f
     # Generate the list of comments
     comments = None
     if list_comments or do_commenting:
-        comments = generate_resolution_comments(prs)
+        comments = generate_resolution_comments(filtered_prs)
 
     # Print the list of comments for review
     if list_comments:
