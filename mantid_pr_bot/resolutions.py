@@ -1,3 +1,5 @@
+import json
+
 from random import randrange
 from string import Template
 
@@ -114,7 +116,13 @@ def fill_random_response_message(problem_type, pr):
 
     usernames = resolutions[problem_type][0](pr)
     idx = randrange(0, len(resolutions[problem_type][1]))
-    return fill_message_template(resolutions[problem_type][1][idx], usernames)
+    user_msg = fill_message_template(resolutions[problem_type][1][idx], usernames)
+
+    machine_msg = json.dumps({'problem_type': problem_type})
+
+    msg_str = '{}\n<!-- {} -->'.format(user_msg, machine_msg)
+
+    return msg_str
 
 
 def generate_resolution_comments(sorted_prs):

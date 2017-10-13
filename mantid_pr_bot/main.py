@@ -64,7 +64,8 @@ def main(token, stale_days, org, repo, list_prs, list_comments, do_commenting, f
         click.echo('All comments ({}):'.format(len(comments)))
         for c in comments:
             click.echo('#{} ({})'.format(c[0]['number'], c[0]['url']))
-            click.echo('\t{}'.format(c[1]))
+            click.echo('{}'.format(c[1]))
+            click.echo()
         click.echo()
 
     # Post comments on pull requests
