@@ -70,8 +70,9 @@ resolutions = {
         Template('$users have you had a chance to complete your review yet?'),
         Template('$users do you have any comments on this PR?')
     ]),
-    'pending_gatekeeper': (get_pr_developer, [
-        Template('$users gatekeeper needed')
+    'pending_gatekeeper': (get_admins, [
+        Template('$users this looks good, is it time for the second review?'),
+        Template('$users do you have a moment to give this a look over?')
     ]),
     'review_requested': (get_requested_reviewers, [
         Template('$users have you had a chance to complete your review yet?'),
