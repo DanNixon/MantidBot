@@ -51,6 +51,7 @@ class GitHubClient(object):
             - Mergeable state ([ret[i]['mergeable']])
             - Last commit (ret[i]['commits']['nodes'][0])
                 - Author's GitHub username (commit['commit']['author']['user']['login'])
+                - Committer's GitHub username (commit['commit']['committer']['user']['login'])
                 - CI status (commit['commit']['status']['state'])
             - PR reviews (ret[i]['reviews'][j])
                 - Status (item['nodes'][i]['state'])
@@ -79,6 +80,11 @@ class GitHubClient(object):
                                 nodes{
                                     commit{
                                         author{
+                                            user{
+                                                login
+                                            }
+                                        }
+                                        committer{
                                             user{
                                                 login
                                             }

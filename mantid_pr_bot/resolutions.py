@@ -16,13 +16,18 @@ def get_admins(pr):
 
 def get_pr_developer(pr):
     """
-    Gets the developer of a pull request (the author of the last commit).
+    Gets the developer of a pull request.
+
+    The developer is either the author of the last commit (if the author and
+    committer are the same) or the author and committer if they are different
+    (and rely on human judgement then they are both notified).
 
     @return Single element list containing current developer
     """
     try:
-        developer = pr['commits']['nodes'][0]['commit']['author']['user']['login']
-        return [developer]
+        author = pr['commits']['nodes'][0]['commit']['author']['user']['login']
+        committer = pr['commits']['nodes'][0]['commit']['committer']['user']['login']
+        return [author] if author == committer else [author, committer]
     except TypeError:
         return []
 
