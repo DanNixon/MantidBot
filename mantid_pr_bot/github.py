@@ -33,11 +33,15 @@ class GitHubClient(object):
         # Convert Python None to JSON null
         payload = message.replace("None", "null")
 
-        # Post Query, recieve reply
-        reply = requests.post(self.endpoint, payload, headers=self.auth)
+        result = requests.post(self.endpoint, payload, headers=self.auth)
+        result_json = result.json()
 
-        # Return reply as a nested Python dictionary
-        return reply.json()
+        if not result.ok:
+            msg = result_json['message'] if 'message' in result_json else 'Unknown API error'
+            msg = '{} ({})'.format(msg, result.status_code)
+            raise RuntimeError(msg)
+
+        return result_json['data']
 
     def get_my_username(self):
         """
