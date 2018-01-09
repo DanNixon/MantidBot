@@ -34,16 +34,13 @@ def filter_prs(all_prs, stale_days_threshold):
     prs['no_dev'] = list(filter(
         is_author_of_last_commit_no_longer_a_mantid_dev, all_prs))
 
-    prs_with_dev = list(filterfalse(
-        is_author_of_last_commit_no_longer_a_mantid_dev, all_prs))
+    stale_prs = list(filter_to_stale_prs(stale_days_threshold, all_prs))
 
     prs['conflicting'] = list(filter(
-        does_this_pr_have_merge_conflicts, prs_with_dev))
+        does_this_pr_have_merge_conflicts, stale_prs))
 
-    prs['failing'] = list(
-            filter_to_ci_fail(prs_with_dev))
+    prs['failing'] = list(filter_to_ci_fail(stale_prs))
 
-    stale_prs = list(filter_to_stale_prs(stale_days_threshold, all_prs))
     stale_passing_prs = list(filter_to_ci_pass(stale_prs))
 
     prs['unreviewed'] = list(filter(
