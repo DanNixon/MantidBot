@@ -41,7 +41,7 @@ class GitHubClient(object):
             msg = '{} ({})'.format(msg, result.status_code)
             raise RuntimeError(msg)
 
-        return result_json['data']
+        return result_json
 
     def get_my_username(self):
         """
