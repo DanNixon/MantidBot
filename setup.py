@@ -1,13 +1,15 @@
-from setuptools import setup
+from setuptools import setup, find_packages
+
 
 setup(
     name='mantid_pr_bot',
     version='0.1.0',
     author='Dan Nixon',
     author_email='daniel.nixon@stfc.ac.uk',
-    py_modules=['mantid_pr_bot'],
+    py_modules=find_packages(),
     install_requires=[
-        'Click',
+        'Click>=5.0.0',
+        'requests',
     ],
     entry_points='''
         [console_scripts]

@@ -81,3 +81,7 @@ def main(token, stale_days, org, repo, list_prs, list_comments, do_commenting, f
             gh_client.post_comments_on_pull_requests(comments)
         else:
             click.echo('Commenting was cancelled!')
+
+
+if __name__ == '__main__':
+    main()
