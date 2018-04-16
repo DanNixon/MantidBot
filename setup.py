@@ -6,7 +6,7 @@ setup(
     version='0.1.0',
     author='Dan Nixon',
     author_email='daniel.nixon@stfc.ac.uk',
-    py_modules=find_packages(),
+    packages=find_packages(),
     install_requires=[
         'Click>=5.0.0',
         'requests',
