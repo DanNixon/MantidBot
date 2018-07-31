@@ -1,6 +1,8 @@
 import json
 import requests
 
+import click
+
 
 class GitHubClient(object):
     """
@@ -63,6 +65,8 @@ class GitHubClient(object):
         return data['data']['viewer']['login']
 
     def fetch_pull_requests(self):
+
+        import click
         """
         Gets a list of pull requests.
 
@@ -80,7 +84,7 @@ class GitHubClient(object):
                 - Status (item['nodes'][i]['state'])
                 - Reviewer's GitHub username (item['nodes'][i]['author']['login'])
             - PR review request (ret[i]['reviewRequests'][j])
-                - Reviewer's GitHub username (item['nodes'][i]['reviewer']['login'])
+                - Reviewer's GitHub username (item['nodes'][i]['requestedReviewer']['login'])
             - Last 10 PR comments (ret[i]['comments']['nodes'][j])
                 - Comment author's GitHub username (item['author']['login'])
                 - Time comment was posted (item['createdAt'])
@@ -132,8 +136,10 @@ class GitHubClient(object):
                             }
                             reviewRequests(last: 10) {
                                 nodes {
-                                    reviewer {
-                                        login
+                                    requestedReviewer {
+                                        ... on User {
+                                            login
+                                        }
                                     }
                                 }
                             }
@@ -163,6 +169,17 @@ class GitHubClient(object):
         # more pages of data
         while True:
             data = self.send_query(query)
+
+            # Check for and output errors
+            errors = data.get('errors', None)
+            if errors:
+                click.echo('API request errors:')
+                for e in errors:
+                    click.echo('{} ({})'.format(
+                        e['message'],
+                        ', '.join(['{line}:{column}'.format(**l) for l in e['locations']])))
+                click.echo()
+
             pull_requests += data['data']['repository']['pullRequests']['nodes']
 
             # If more pull requests, update cursor to point to new page

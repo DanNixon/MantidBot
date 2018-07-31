@@ -49,7 +49,7 @@ def get_requested_reviewers(pr):
 
     @return List of users from which reviews are requested
     """
-    return [rr['reviewer']['login'] for rr in pr['reviewRequests']['nodes']]
+    return [rr['requestedReviewer']['login'] for rr in pr['reviewRequests']['nodes']]
 
 
 resolutions = {
