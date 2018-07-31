@@ -31,10 +31,10 @@ def filter_prs(all_prs, stale_days_threshold):
 
     prs = {}
 
-    prs['no_dev'] = list(filter(
-        is_author_of_last_commit_no_longer_a_mantid_dev, all_prs))
-
     stale_prs = list(filter_to_stale_prs(stale_days_threshold, all_prs))
+
+    prs['no_dev'] = list(filter(
+        is_author_of_last_commit_no_longer_a_mantid_dev, stale_prs))
 
     prs['conflicting'] = list(filter(
         does_this_pr_have_merge_conflicts, stale_prs))
