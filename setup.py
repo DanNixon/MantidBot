@@ -16,9 +16,8 @@ setup(
         mantid_pr_bot=mantid_pr_bot.main:main
     ''',
     classifiers=[
-        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3',
         'Natural Language :: English',
-        'Intended Audience :: Developers',
-        'Operating System :: POSIX :: Linux'
+        'Intended Audience :: Developers'
     ]
 )
